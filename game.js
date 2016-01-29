@@ -1,4 +1,9 @@
 window.onload = function() {
+
+    var canvasElem = $('#myCanvas').get(0);
+    canvasElem.setAttribute('height', $('body').height());
+    canvasElem.setAttribute('width', $('body').width());
+
     paper.install(window);
     paper.setup('myCanvas');
 
