@@ -30,14 +30,26 @@ scales = [0.999, 0.998, 0.997, 0.996, 0.995],
 scaleIndex = 0,
 in_a_row = 0,
 max_in_a_row = 0
+total_popped = 0
 ;
 
+function _longestRun() {
+    return max_in_a_row;
+}
+
 function _scoreString() {
-    return max_in_a_row > 1 ? max_in_a_row + " (in a row) * " + Math.floor(max_y) + " (height) = <b>" + _score() + "</b>" : Math.floor(max_y) + " (height)" + " = <b>" + _score() + "</b>";
+    return [
+        max_in_a_row ? max_in_a_row  + "&nbsp(longest&nbsprun)" : "XXX",
+        total_popped ? total_popped + "&nbsp(clouds)" : " XXX ",
+        Math.floor(max_y) ? Math.floor(max_y) + "&nbsp(altitude)" : " XXX ",
+    ].join(" * ")
+    + " = <b>" + _score() + "</b>";
 }
 
 function _score() {
-    return Math.floor(max_in_a_row > 1 ? max_in_a_row * max_y : max_y);
+    var max_in_a_row_mult = max_in_a_row || 1;
+    var total_popped_mult = total_popped || 1;
+    return Math.floor(max_y) * max_in_a_row_mult * total_popped_mult;
 }
 // Returns a random number between min (inclusive) and max (exclusive)
 function _rndIn(min, max) {
@@ -163,6 +175,7 @@ window.onload = function() {
             abs_y = 0;
             $(".finalScore").removeClass("hidden");
             $(".finalScore .scoreString").html(_scoreString());
+            $(".finalScore .runString").html(_longestRun());
             $(".finalScore .bestScoreString").html(localStorage.bestScoreString);
         }
         $(".score").html(_scoreString());
@@ -309,8 +322,9 @@ function initCloud(x,y,size) {
             this.hit=true;
             in_a_row++;
             max_in_a_row = Math.max(max_in_a_row,in_a_row);
+            total_popped += 1;
             thrust += 1;
-            var color = COLORS[_rndIn(0,COLORS.length)];
+            var color = COLORS[in_a_row%COLORS.length];
             var iar = $("<div/>",{
                 class:'in_a_row',
                 text:in_a_row
