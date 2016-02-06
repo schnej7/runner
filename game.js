@@ -4,20 +4,21 @@ abs_x,
 abs_y,
 max_y,
 vx = 0,
-vy = 0,
-thrust = 2,
+vy = 10,
+thrust = 1.4,
 angle = 90,
 screen_height,
 screen_width,
 new_obj_count = 0,
-new_obj_limit = 1000,
+new_obj_limit = 1400,
+next_obj_limit = new_obj_limit,
 new_puff_count = 0,
-new_puff_limit = 10,
+new_puff_limit = 8,
 puff_max_age = new_puff_limit * 10,
 next_cloud_x,
 triangle,
 indicator_group,
-MAX_VX = 10,
+MAX_VX = 20,
 INDICATOR_SPEED = 10,
 COLORS=["#FFBF00","#E83F6F","#2274A5","#32936F","#581D68"],
 CLOUDS=[
@@ -30,8 +31,13 @@ scales = [0.999, 0.998, 0.997, 0.996, 0.995],
 scaleIndex = 0,
 in_a_row = 0,
 max_in_a_row = 0
-total_popped = 0
+total_popped = 0,
+cloud_nerf_limit = 100000;
 ;
+
+function numberWithCommas(x) {
+    return x.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+}
 
 function _longestRun() {
     return max_in_a_row;
@@ -39,11 +45,11 @@ function _longestRun() {
 
 function _scoreString() {
     return [
-        max_in_a_row ? max_in_a_row  + "&nbsp(longest&nbsprun)" : "XXX",
-        total_popped ? total_popped + "&nbsp(clouds)" : " XXX ",
-        Math.floor(max_y) ? Math.floor(max_y) + "&nbsp(altitude)" : " XXX ",
+        max_in_a_row ? numberWithCommas(max_in_a_row) + "&nbsp(longest&nbsprun)" : "XXX",
+        total_popped ? numberWithCommas(total_popped) + "&nbsp(clouds)" : " XXX ",
+        Math.floor(max_y) ? numberWithCommas(Math.floor(max_y)) + "&nbsp(altitude)" : " XXX ",
     ].join(" * ")
-    + " = <b>" + _score() + "</b>";
+    + " = <b>" + numberWithCommas(_score()) + "</b>";
 }
 
 function _score() {
@@ -53,7 +59,9 @@ function _score() {
 }
 // Returns a random number between min (inclusive) and max (exclusive)
 function _rndIn(min, max) {
-    return Math.floor(Math.random() * max) + min;
+    var random = Math.random();
+    var output = Math.floor(random * (max-min)) + min;
+    return output;
 }
 
 function toRadians (angle) {
@@ -81,14 +89,14 @@ function _initOrResize() {
     center = {};
     center["y"] = screen_height/2;
     center["x"] = screen_width/2;
-    next_cloud_x = _rndIn(0,screen_width);
+    next_cloud_x = screen_width/2;
 }
 
 function _updateDebug() {
     var debugText = "";
     debugText += "<p>max_y: "+max_y+"</p>";
     debugText += "<p>new_obj_count: "+new_obj_count+"</p>";
-    debugText += "<p>new_obj_limit: "+new_obj_limit+"</p>";
+    debugText += "<p>next_obj_limit: "+next_obj_limit+"</p>";
     $('.debug').html(debugText);
 }
 
@@ -203,16 +211,8 @@ function _initIndicator() {
     var triangle = new Path();
     triangle.add(new Point(next_cloud_x,0),new Point(next_cloud_x+10,35),new Point(next_cloud_x-10,35));
     triangle.closePath();
-    triangle.fillColor = "#87CFD6";
-    var coverSquare = new Path();
-    coverSquare.add(new Point(next_cloud_x+10,35),new Point(next_cloud_x+10,70),new Point(next_cloud_x-10,70),new Point(next_cloud_x-10,35));
-    coverSquare.closePath();
-    coverSquare.fillColor = "#ffffff";
-    coverSquare.onFrame = function() {
-        this.position.y = 45 * ( (new_obj_limit - new_obj_count) / new_obj_limit ) + 18;
-    }
-    var group = new Group(triangle, coverSquare);
-    group.onFrame = function() {
+    triangle.fillColor = _hexToColor(COLORS[1]);
+    triangle.onFrame = function() {
         INDICATOR_SPEED = Math.abs(this.position.x - next_cloud_x) / 4;
         if (next_cloud_x > this.position.x) {
             this.position.x += INDICATOR_SPEED;
@@ -222,8 +222,15 @@ function _initIndicator() {
         if (Math.abs(next_cloud_x - this.position.x) < INDICATOR_SPEED+1) {
             this.position.x = next_cloud_x;
         }
+        var path = new Path.Rectangle({
+            point: [this.position.x-10, 0],
+            size: [20, Math.min(50,50*(1-new_obj_count/next_obj_limit))],
+            fillColor: 'black'
+        });
+        this.fitBounds(path.bounds);
+        path.remove();
     }
-    return group;
+    return triangle;
 }
 
 function _updateTriangle() {
@@ -232,17 +239,25 @@ function _updateTriangle() {
     triangle.obj.position.x = (triangle.obj.position.x + screen_width) % screen_width;
     abs_x = (abs_x + vx + screen_width) % screen_width;
     abs_y = abs_y + vy;
+    if (cloud_nerf_limit < abs_y && !$('#myCanvas.black').length) {
+        $('#myCanvas').addClass('black');
+        $('.score').addClass('white-text');
+        $('.finalScore').addClass('white-text');
+        triangle.obj.fillColor = '#000';
+        triangle.obj.strokeColor= '#fff';
+    }
     if (abs_y > max_y) {
         new_obj_count += abs_y - max_y;
         max_y = abs_y;
-        if (new_obj_count > new_obj_limit) {
-            new_obj_limit = Math.max(1000, abs_y / 100);
-            var cloud_nerf_limit = 100000;
+        if (new_obj_count > next_obj_limit) {
+            next_obj_limit = Math.max(new_obj_limit, abs_y / (cloud_nerf_limit/new_obj_limit));
             var cloud_max = 70*((cloud_nerf_limit-abs_y)/cloud_nerf_limit);
             var cloud_min = 30;
             var cloud_size = Math.max(30,cloud_max);
             initCloud(next_cloud_x,-cloud_size,cloud_size);
-            next_cloud_x = _rndIn(0,screen_width);
+            var nxtx_min = Math.floor(Math.max(0,triangle.obj.position.x - abs_y/60));
+            var nxtx_max = Math.floor(Math.min(screen_width,triangle.obj.position.x + abs_y/50));
+            next_cloud_x = _rndIn(nxtx_min,nxtx_max);
             new_obj_count = 0;
         }
     }
@@ -271,7 +286,6 @@ function _fadeObject(object,age) {
     }
     object.age = object.age ? object.age + 1 : 1;
     if (object.age > age) {
-        console.log("remove");
         object.remove();
     }
 }
@@ -326,8 +340,13 @@ function initCloud(x,y,size) {
     cloud.closePath();
     cloud.position.x = x;
     cloud.position.y = -120;
-    cloud.strokeColor = '#000';
-    cloud.fillColor = '#fff';
+    if (cloud_nerf_limit < abs_y) {
+        cloud.strokeColor = '#fff';
+        cloud.fillColor = '#000';
+    } else {
+        cloud.strokeColor = '#000';
+        cloud.fillColor = '#fff';
+    }
     cloud.onFrame = function(event) {
         _updateObject(this);
         _spinScale(this);
@@ -352,6 +371,7 @@ function initCloud(x,y,size) {
             setTimeout(function(){
                 iar.remove();
             },2000);
+            indicator.fillColor = _hexToColor(color);
         }
         if (this.hit) {
             if (this.strokeColor.alpha == 1) {
@@ -359,8 +379,9 @@ function initCloud(x,y,size) {
             }
             _fadeAndScaleObject(this,puff_max_age);
         }
-        if (!this.hit && this.position.y > triangle.obj.position.y + new_obj_limit - 200) {
+        if (!this.hit && this.position.y > triangle.obj.position.y + screen_height / 1.5) {
             in_a_row = 0;
+            indicator.fillColor = _hexToColor(COLORS[1]);
             this.remove();
         }
     }
@@ -368,8 +389,15 @@ function initCloud(x,y,size) {
 }
 
 function initPuff() {
-    var puff = new Path.Circle(new Point(triangle.obj.position.x, triangle.obj.position.y), 4);
-    puff.strokeColor = '#000000';
+    var puff = new Path.Circle(new Point(triangle.obj.position.x+Math.cos(toRadians(angle))*(20+thrust*10), triangle.obj.position.y+Math.sin(toRadians(angle))*(10+thrust*10)), 4+thrust*40);
+    puff.strokeWidth = Math.floor(1.9+thrust);
+    if (cloud_nerf_limit < abs_y) {
+        puff.strokeColor = '#fff';
+        puff.fillColor = '#000';
+    } else {
+        puff.strokeColor = '#000';
+        puff.fillColor = '#fff';
+    }
     puff.onFrame = function(event) {
         _updateObject(this);
         _fadeAndScaleObject(this,puff_max_age);
@@ -380,8 +408,8 @@ function initPuff() {
 
 function _initBurst() {
     for (var i = 0; i < 10; i++) {
-        var dx = _rndIn(-5,6);
-        var dy = _rndIn(-5,6);
+        var dx = _rndIn(-5,5);
+        var dy = _rndIn(-5,6) || 1;
         var ptc = new Path.Circle(new Point(triangle.obj.position.x+dx, triangle.obj.position.y+dy), _rndIn(2,3));
         ptc.fillColor=_hexToColor(COLORS[_rndIn(0,COLORS.length)]);
         ptc.dx = dx;
