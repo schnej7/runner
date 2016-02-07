@@ -239,6 +239,9 @@ function _updateTriangle() {
     triangle.obj.position.x = (triangle.obj.position.x + screen_width) % screen_width;
     abs_x = (abs_x + vx + screen_width) % screen_width;
     abs_y = abs_y + vy;
+    if (triangle.obj.position.y > screen_height * 0.75) {
+        triangle.obj.position.y *= 0.999;
+    }
     if (cloud_nerf_limit < abs_y && !$('#myCanvas.black').length) {
         $('#myCanvas').addClass('black');
         $('.score').addClass('white-text');
@@ -255,8 +258,8 @@ function _updateTriangle() {
             var cloud_min = 30;
             var cloud_size = Math.max(30,cloud_max);
             initCloud(next_cloud_x,-cloud_size,cloud_size);
-            var nxtx_min = Math.floor(Math.max(0,triangle.obj.position.x - abs_y/60));
-            var nxtx_max = Math.floor(Math.min(screen_width,triangle.obj.position.x + abs_y/50));
+            var nxtx_min = Math.floor(Math.max(50,triangle.obj.position.x - abs_y/60));
+            var nxtx_max = Math.floor(Math.min(screen_width-50,triangle.obj.position.x + abs_y/50));
             next_cloud_x = _rndIn(nxtx_min,nxtx_max);
             new_obj_count = 0;
         }
@@ -303,7 +306,8 @@ function _spinScale(object) {
 function initTriangle() {
     // Create a triangle shaped path 
     var triangle = new Path();
-    triangle.add(new Point(center.x,center.y),new Point(center.x+10,center.y+22),new Point(center.x-10,center.y+22));
+    var starting_y = screen_height * 0.9;
+    triangle.add(new Point(center.x,starting_y),new Point(center.x+10,starting_y+22),new Point(center.x-10,starting_y+22));
     triangle.closePath();
     triangle.strokeColor = '#000';
     triangle.fillColor = '#fff';
@@ -407,10 +411,10 @@ function initPuff() {
 }
 
 function _initBurst() {
-    for (var i = 0; i < 10; i++) {
-        var dx = _rndIn(-5,5);
-        var dy = _rndIn(-5,6) || 1;
-        var ptc = new Path.Circle(new Point(triangle.obj.position.x+dx, triangle.obj.position.y+dy), _rndIn(2,3));
+    for (var i = 0; i < 30; i++) {
+        var dx = _rndIn(-5,5) || 1;
+        var dy = _rndIn(-6,2) - vy || 1;
+        var ptc = new Path.Circle(new Point(triangle.obj.position.x+dx, triangle.obj.position.y+dy), _rndIn(1,5));
         ptc.fillColor=_hexToColor(COLORS[_rndIn(0,COLORS.length)]);
         ptc.dx = dx;
         ptc.dy = dy;
@@ -418,6 +422,7 @@ function _initBurst() {
             var translation = new Point(vx+this.dx, this.dy);
             this.translate(translation);
             _fadeObject(this,80);
+            _updateObject(this);
         }
     }
 }

@@ -65,10 +65,9 @@ span, div {
 .in_a_row {
   opacity: 1;
   position: absolute;
-  top: 0;
+  top: 30px;
   left: 0;
   width: 100%;
-  height: 100%;
   text-align: center;
   font-size: 100px;
 }
