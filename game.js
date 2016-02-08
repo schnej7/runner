@@ -258,8 +258,8 @@ function _updateTriangle() {
             var cloud_min = 30;
             var cloud_size = Math.max(30,cloud_max);
             initCloud(next_cloud_x,-cloud_size,cloud_size);
-            var nxtx_min = Math.floor(Math.max(50,triangle.obj.position.x - abs_y/60));
-            var nxtx_max = Math.floor(Math.min(screen_width-50,triangle.obj.position.x + abs_y/50));
+            var nxtx_min = Math.floor(Math.max(50,triangle.obj.position.x - abs_y/30));
+            var nxtx_max = Math.floor(Math.min(screen_width-50,triangle.obj.position.x + abs_y/30));
             next_cloud_x = _rndIn(nxtx_min,nxtx_max);
             new_obj_count = 0;
         }
